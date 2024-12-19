@@ -1,6 +1,7 @@
 .env
 node_modules
-openai-config.js
+open-ai-config.ts
+backend/dist/config/openai-config.js
 backend/dist/config/openai-config.js.map
 backend/dist/utils/open-ai-config.js
 backend/dist/utils/open-ai-config.js.map
