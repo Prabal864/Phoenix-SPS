@@ -66,7 +66,8 @@ export const userLogin = async (req:Request, res:Response, next:NextFunction) =>
             domain:"phoenix-sps-backend-0-0-1.onrender.com",
             expires,
             httpOnly: true, 
-            signed: true});
+            signed: true}
+        );
 
         return res.status(200).json({message:"OK",name:user.name , email : user.email});
 
