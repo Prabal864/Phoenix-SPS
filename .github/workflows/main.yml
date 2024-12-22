@@ -32,7 +32,7 @@ jobs:
   build-deploy-backend:
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: ${{ steps.detect_changes.outputs.backend_changed != '' }}
+    if: ${{ needs.detect-changes.outputs.backend_changed != '' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
@@ -51,7 +51,7 @@ jobs:
   build-deploy-frontend:
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: ${{ steps.detect_changes.outputs.frontend_changed != '' }}
+    if: ${{ needs.detect-changes.outputs.frontend_changed != '' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
