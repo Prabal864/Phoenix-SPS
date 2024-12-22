@@ -11,7 +11,8 @@ export const getAllUsers = async (req:Request, res:Response, next:NextFunction) 
              users});
     } catch (error) {
         console.log(error);
-        return res.status(200).json({message:"ERROR", cause : error.message});
+        return res.status(200).json({message:"ERROR", cause :
+             error.message});
     }
 };
 
