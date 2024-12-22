@@ -9,9 +9,10 @@ import cors from 'cors';
 config();
 const app = express();
 
-const frontendUrl = process.env.FRONTEND_URL || "http://localhost:3000";
+const frontendUrl = process.env.FRONTEND_URL || "http://localhost:5173";
 //? MIDLLEWARES
-app.use(cors({origin: [frontendUrl],credentials:true}));
+app.use(cors({origin: [frontendUrl],methods:["GET","POST","DELETE"]
+    ,credentials:true}));
 app.use(express.json());
 app.use(cookieParser(process.env.COOKIE_SECRET));
 app.use(morgan("dev"));
