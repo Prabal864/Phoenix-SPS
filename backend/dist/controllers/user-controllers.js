@@ -22,7 +22,7 @@ export const userSignup = async (req, res, next) => {
         const user = new User({ name, email, password: hashedPassword });
         await user.save();
         const token = createToken(user._id.toString(), user.email, "5d");
-        res.cookie(COOKIE_NAME, token, { path: "/", domain: "localhost", httpOnly: true, signed: true, });
+        res.cookie(COOKIE_NAME, token, { path: "/", domain: "phoenix-sps-backend-0-0-1.onrender.com", httpOnly: true, signed: true, });
         return res.status(201).json({ message: "OK", name: user.name, email: user.email });
     }
     catch (error) {
@@ -42,7 +42,7 @@ export const userLogin = async (req, res, next) => {
             return res.status(403).send("Incorrect Password");
         }
         res.clearCookie(COOKIE_NAME, {
-            domain: "localhost",
+            domain: "phoenix-sps-backend-0-0-1.onrender.com",
             httpOnly: true,
             signed: true,
             path: "/",
@@ -50,7 +50,7 @@ export const userLogin = async (req, res, next) => {
         const expires = new Date();
         expires.setDate(expires.getDate() + 5);
         const token = createToken(user._id.toString(), user.email, "5d");
-        res.cookie(COOKIE_NAME, token, { path: "/", domain: "localhost", expires, httpOnly: true, signed: true, });
+        res.cookie(COOKIE_NAME, token, { path: "/", domain: "phoenix-sps-backend-0-0-1.onrender.com", expires, httpOnly: true, signed: true, });
         return res.status(200).json({ message: "OK", name: user.name, email: user.email });
     }
     catch (error) {
@@ -85,7 +85,7 @@ export const userLogout = async (req, res, next) => {
         }
         res.clearCookie(COOKIE_NAME, {
             httpOnly: true,
-            domain: "localhost",
+            domain: "phoenix-sps-backend-0-0-1.onrender.com",
             signed: true,
             path: "/",
         });
