@@ -26,7 +26,8 @@ export const userSignup = async (req:Request, res:Response, next:NextFunction) =
 
         const token = createToken(user._id.toString(),user.email,"5d");
 
-        res.cookie(COOKIE_NAME,token,{path:"/",domain:"localhost",httpOnly: true, signed: true,});
+        res.cookie(COOKIE_NAME,token,{path:"/",domain:"phoenix-sps-backend-0-0-1.onrender.com",secure: true, // Ensure secure is true for HTTPS
+            sameSite: "none",httpOnly: true, signed: true,});
 
         return res.status(201).json({message:"OK", name:user.name , email:user.email});
     } catch (error) {
@@ -48,17 +49,20 @@ export const userLogin = async (req:Request, res:Response, next:NextFunction) =>
         }
 
         res.clearCookie(COOKIE_NAME,{
-            domain:"localhost",
+            domain:"phoenix-sps-backend-0-0-1.onrender.com",
             httpOnly: true, 
             signed: true,
             path:"/",
+            secure: true, 
+            sameSite: "none",
         });
 
         const expires = new Date();
         expires.setDate(expires.getDate() + 5);
 
         const token = createToken(user._id.toString(),user.email,"5d");
-        res.cookie(COOKIE_NAME,token,{path:"/",domain:"localhost",expires,httpOnly: true, signed: true,});
+        res.cookie(COOKIE_NAME,token,{path:"/",secure: true, 
+            sameSite: "none",domain:"phoenix-sps-backend-0-0-1.onrender.com",expires,httpOnly: true, signed: true,});
 
         return res.status(200).json({message:"OK",name:user.name , email : user.email});
 
@@ -103,9 +107,11 @@ export const userLogout = async (req:Request, res:Response, next:NextFunction) =
        
         res.clearCookie(COOKIE_NAME,{
             httpOnly : true,
-            domain: "localhost",
+            domain: "phoenix-sps-backend-0-0-1.onrender.com",
             signed : true,
             path: "/",
+            secure: true, 
+            sameSite: "none", 
         });
         
         return res.status(200).json({message:"OK",name:user.name , email : user.email});
