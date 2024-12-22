@@ -2,74 +2,130 @@ name: CI/CD Pipeline
 
 on:
   push:
-    branches:
-      - main  # Trigger on pushes to the main branch
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
   pull_request:
-    branches:
-      - main  # Trigger on PRs targeting the main branch
+    branches: [main]
+    paths:
+      - 'backend/**'
+      - 'frontend/**'
 
 jobs:
   detect-changes:
     runs-on: ubuntu-latest
-
+    outputs:
+      backend_changed: ${{ steps.changes.outputs.backend }}
+      frontend_changed: ${{ steps.changes.outputs.frontend }}
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v2
-
+      - uses: actions/checkout@v3
+        with:
+          fetch-depth: 0
+      
       - name: Detect Changes
-        id: detect_changes
+        id: changes
+        shell: bash
         run: |
-          backend_changed=$(git diff --name-only HEAD~1 HEAD | grep '^backend/' || true)
-          frontend_changed=$(git diff --name-only HEAD~1 HEAD | grep '^frontend/' || true)
-
-          echo "backend_changed=$backend_changed" >> $GITHUB_ENV
-          echo "frontend_changed=$frontend_changed" >> $GITHUB_ENV
-
-          # Set outputs to use in the next jobs
-          echo "::set-output name=backend_changed::$backend_changed"
-          echo "::set-output name=frontend_changed::$frontend_changed"
+          if [ "${{ github.event_name }}" = "push" ]; then
+            DIFF_ARGS="${{ github.event.before }} ${{ github.event.after }}"
+          else
+            DIFF_ARGS="origin/${{ github.base_ref }}...HEAD"
+          fi
+          
+          backend_changed=$(git diff --name-only $DIFF_ARGS | grep '^backend/' || true)
+          frontend_changed=$(git diff --name-only $DIFF_ARGS | grep '^frontend/' || true)
+          
+          echo "backend=$(if [ ! -z "$backend_changed" ]; then echo "true"; else echo "false"; fi)" >> $GITHUB_OUTPUT
+          echo "frontend=$(if [ ! -z "$frontend_changed" ]; then echo "true"; else echo "false"; fi)" >> $GITHUB_OUTPUT
 
   build-deploy-backend:
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.backend_changed != '' }}
+    if: needs.detect-changes.outputs.backend_changed == 'true'
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v2
-
-      - name: Build Docker image for Backend
+      - uses: actions/checkout@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Build and push Backend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./backend
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/phoenix-sps:backend-${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/phoenix-sps:backend-latest
+      
+      - name: Deploy Backend
+        id: deploy-backend
+        timeout-minutes: 10
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/phoenix-sps:backend-0.0.1 ./backend
-          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-          docker push ${{ secrets.DOCKER_USERNAME }}/backend-app:latest
-          docker logout
-
-      - name: Trigger Backend Deployment
-        run: |
-          curl -X POST ${{ secrets.RENDER_BACKEND_DEPLOY_HOOK }}
+          response=$(curl -s -w "\n%{http_code}" -X POST ${{ secrets.RENDER_BACKEND_DEPLOY_HOOK }})
+          status_code=$(echo "$response" | tail -n1)
+          if [ "$status_code" != "200" ]; then
+            echo "Backend deployment failed with status: $status_code"
+            exit 1
+          fi
 
   build-deploy-frontend:
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: ${{ needs.detect-changes.outputs.frontend_changed != '' }}
+    if: needs.detect-changes.outputs.frontend_changed == 'true'
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v2
-
-      - name: Build Docker image for Frontend
+      - uses: actions/checkout@v3
+      
+      - name: Set up Docker Buildx
+        uses: docker/setup-buildx-action@v2
+      
+      - name: Login to Docker Hub
+        uses: docker/login-action@v2
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+      
+      - name: Build and push Frontend
+        uses: docker/build-push-action@v4
+        with:
+          context: ./frontend
+          push: true
+          tags: |
+            ${{ secrets.DOCKER_USERNAME }}/phoenix-sps:frontend-${{ github.sha }}
+            ${{ secrets.DOCKER_USERNAME }}/phoenix-sps:frontend-latest
+      
+      - name: Deploy Frontend
+        id: deploy-frontend
+        timeout-minutes: 10
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/phoenix-sps:frontend-0.0.1 ./frontend
-          docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
-          docker push ${{ secrets.DOCKER_USERNAME }}/frontend-app:latest
-          docker logout
-
-      - name: Trigger Frontend Deployment
-        run: |
-          curl -X POST ${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK }}
+          response=$(curl -s -w "\n%{http_code}" -X POST ${{ secrets.RENDER_FRONTEND_DEPLOY_HOOK }})
+          status_code=$(echo "$response" | tail -n1)
+          if [ "$status_code" != "200" ]; then
+            echo "Frontend deployment failed with status: $status_code"
+            exit 1
+          fi
 
   post-deploy:
     runs-on: ubuntu-latest
     needs: [build-deploy-backend, build-deploy-frontend]
+    if: always()
     steps:
-      - name: Notify Completion
-        run: echo "Pipeline execution complete!"
+      - name: Check deployment status
+        run: |
+          if [ "${{ needs.build-deploy-backend.result }}" != "success" ] && 
+             [ "${{ needs.build-deploy-backend.result }}" != "skipped" ]; then
+            echo "Backend deployment failed or was cancelled"
+            exit 1
+          fi
+          if [ "${{ needs.build-deploy-frontend.result }}" != "success" ] && 
+             [ "${{ needs.build-deploy-frontend.result }}" != "skipped" ]; then
+            echo "Frontend deployment failed or was cancelled"
+            exit 1
+          fi
+          echo "All deployments completed successfully!"
