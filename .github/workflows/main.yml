@@ -31,14 +31,14 @@ jobs:
   build-deploy-backend:
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: env.backend_changed != ''
+    if: ${{ env.backend_changed != '' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
 
       - name: Build Docker image for Backend
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/backend-app:latest ./backend
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/phoenix-sps:backend-0.0.1 ./backend
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
           docker push ${{ secrets.DOCKER_USERNAME }}/backend-app:latest
           docker logout
@@ -50,14 +50,14 @@ jobs:
   build-deploy-frontend:
     runs-on: ubuntu-latest
     needs: detect-changes
-    if: env.frontend_changed != ''
+    if: ${{ env.frontend_changed != '' }}
     steps:
       - name: Checkout Code
         uses: actions/checkout@v2
 
       - name: Build Docker image for Frontend
         run: |
-          docker build -t ${{ secrets.DOCKER_USERNAME }}/frontend-app:latest ./frontend
+          docker build -t ${{ secrets.DOCKER_USERNAME }}/phoenix-sps:frontend-0.0.1 ./frontend
           docker login -u ${{ secrets.DOCKER_USERNAME }} -p ${{ secrets.DOCKER_PASSWORD }}
           docker push ${{ secrets.DOCKER_USERNAME }}/frontend-app:latest
           docker logout
