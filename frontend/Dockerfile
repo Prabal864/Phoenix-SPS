@@ -10,10 +10,8 @@ RUN npm install
 RUN npm install -g serve
 # Copy the entire project directory
 COPY . .
-
 # Build the application
 RUN npm run build
-
 # Expose the desired port
 EXPOSE 5173
 
